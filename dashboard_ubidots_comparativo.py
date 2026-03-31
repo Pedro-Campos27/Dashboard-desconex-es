@@ -77,7 +77,7 @@ def fmt_duration(minutes: float) -> str:
     total = int(round(minutes))
     hours, mins = divmod(total, 60)
     if hours > 0 and mins > 0:
-        return f"{hours}h {mins}min"
+        return f"{hours}h e {mins}min"
     if hours > 0:
         return f"{hours}h"
     return f"{mins}min"
@@ -746,7 +746,7 @@ def render_dashboard() -> None:
     before_options = {path.name: path for path in before_periods}
     before_labels = list(before_options.keys())
 
-    st.title("Comparação antes x depois das desconexões")
+    st.title("Comparação de desconexões antes e depois da troca do gateway")
     st.caption(
         "Os períodos são diferentes. Por isso, os gráficos principais usam hora do dia "
         "e métricas normalizadas por dia amostrado."
@@ -926,7 +926,7 @@ def render_dashboard() -> None:
         before_val: float,
         after_val: float,
         unit: str,
-        icon: str = "📊",
+        icon: str = "",
         invert: bool = False,
         delta_suffix: str = "",
         subtitle: str = "",
@@ -995,11 +995,12 @@ def render_dashboard() -> None:
     kpi_1, kpi_2, kpi_3, kpi_4 = st.columns(4)
     with kpi_1:
         _kpi_card(
-            "Conectividade geral",
+            "Percentual de conectividade geral",
             before_metrics["pct_conectado"],
             after_metrics["pct_conectado"],
             "%",
-            icon="📶",
+           
+            
         )
     with kpi_2:
         _kpi_card(
@@ -1007,17 +1008,17 @@ def render_dashboard() -> None:
             before_metrics["min_sem_dado_por_dia_por_sensor"],
             after_metrics["min_sem_dado_por_dia_por_sensor"],
             "duration",
-            icon="⏱️",
+          
             invert=True,
             delta_suffix="/dia",
         )
     with kpi_3:
         _kpi_card(
-            "Quedas longas por dia",
+            "Média de quedas (>20min) por dia",
             before_metrics["desconexoes_por_dia"],
             after_metrics["desconexoes_por_dia"],
             "",
-            icon="🔌",
+           
             invert=True,
             delta_suffix=" quedas/dia",
         )
@@ -1025,11 +1026,11 @@ def render_dashboard() -> None:
         after_crit_dur = fmt_duration(after_metrics["critical_min_sem_dado_por_dia"])
         before_crit_dur = fmt_duration(before_metrics["critical_min_sem_dado_por_dia"])
         _kpi_card(
-            "Offline entre 20h e 8h",
+            "Média de tempo offline entre 20h e 8h",
             before_metrics["pct_sem_dado_critico"],
             after_metrics["pct_sem_dado_critico"],
             "%",
-            icon="🌙",
+            
             invert=True,
             
         )
@@ -1079,22 +1080,28 @@ def render_dashboard() -> None:
                 yaxis_title="% sem dado",
                 legend_title="",
                 template=PLOTLY_TEMPLATE,
+                hovermode="x unified",
                 hoverlabel=dict(bgcolor="white", font_size=13, font_family="Arial"),
             )
             st.plotly_chart(overall_fig, use_container_width=True)
 
         with right:
+            band_summary["pct_fmt"] = band_summary["pct_sem_dado"].apply(lambda x: f"{x:.2f}%")
             faixa_chart = px.bar(
                 band_summary,
                 x="faixa",
                 y="pct_sem_dado",
                 color="cenario",
                 barmode="group",
-                title="% sem dado: faixa crítica vs fora",
+                title="Percentual sem dado: 20h às 8h vs 8h às 20h",
                 template=PLOTLY_TEMPLATE,
+                text="pct_fmt",
+                custom_data=["pct_fmt"],
             )
             faixa_chart.update_traces(
-                hovertemplate="<b>%{fullData.name}</b><br>Faixa: %{x}<br>Sem dado: %{y:.2f}%<extra></extra>"
+                textposition="outside",
+                textfont=dict(size=11),
+                hovertemplate="<b>%{fullData.name}</b><br>Faixa: %{x}<br>Sem dado: %{customdata[0]}<extra></extra>"
             )
             faixa_chart.update_layout(
                 xaxis_title="Faixa horária",
@@ -1107,17 +1114,23 @@ def render_dashboard() -> None:
         bottom_left, bottom_right = st.columns(2)
 
         with bottom_left:
+            summary_sorted_ev = summary_long.sort_values(["sensor", "cenario"]).copy()
+            summary_sorted_ev["desc_fmt"] = summary_sorted_ev["desconexoes_por_dia"].apply(lambda x: f"{x:.2f}" if x > 0 else "0")
             eventos_sensor_chart = px.bar(
-                summary_long.sort_values(["sensor", "cenario"]),
+                summary_sorted_ev,
                 x="sensor",
                 y="desconexoes_por_dia",
                 color="cenario",
                 barmode="group",
                 title="Desconexões (>20 min) por dia — por sensor",
                 template=PLOTLY_TEMPLATE,
+                text="desc_fmt",
+                custom_data=["desc_fmt"],
             )
             eventos_sensor_chart.update_traces(
-                hovertemplate="<b>%{fullData.name}</b><br>Sensor: %{x}<br>Desconexões/dia: %{y:.2f}<extra></extra>"
+                textposition="outside",
+                textfont=dict(size=11),
+                hovertemplate="<b>%{fullData.name}</b><br>Sensor: %{x}<br>Desconexões/dia: %{customdata[0]}<extra></extra>"
             )
             eventos_sensor_chart.update_layout(
                 xaxis_title="Sensor",
@@ -1128,52 +1141,35 @@ def render_dashboard() -> None:
             st.plotly_chart(eventos_sensor_chart, use_container_width=True)
 
         with bottom_right:
+            summary_sorted = summary_long.sort_values(["sensor", "cenario"]).copy()
+            summary_sorted["horas_sem_dado_por_dia"] = summary_sorted["min_sem_dado_por_dia"] / 60
+            summary_sorted["duracao_fmt"] = summary_sorted["min_sem_dado_por_dia"].apply(fmt_duration)
+            
             missing_sensor_chart = px.bar(
-                summary_long.sort_values(["sensor", "cenario"]),
+                summary_sorted,
                 x="sensor",
-                y="min_sem_dado_por_dia",
+                y="horas_sem_dado_por_dia",
                 color="cenario",
                 barmode="group",
-                title="Minutos sem dado por dia — por sensor",
+                title="Tempo sem dado por dia — por sensor",
                 template=PLOTLY_TEMPLATE,
+                text="duracao_fmt",
+                custom_data=["duracao_fmt"],
             )
             missing_sensor_chart.update_traces(
-                hovertemplate="<b>%{fullData.name}</b><br>Sensor: %{x}<br>Min. sem dado/dia: %{y:.2f}<extra></extra>"
+                textposition="outside",
+                textfont=dict(size=11),
+                hovertemplate="<b>%{fullData.name}</b><br>Sensor: %{x}<br>Tempo sem dado/dia: %{customdata[0]}<extra></extra>"
             )
             missing_sensor_chart.update_layout(
                 xaxis_title="Sensor",
-                yaxis_title="Min. sem dado / dia",
+                yaxis_title="Horas (escala temporal)",
                 legend_title="",
                 hoverlabel=dict(bgcolor="white", font_size=13, font_family="Arial"),
             )
             st.plotly_chart(missing_sensor_chart, use_container_width=True)
 
-        comparison_display = prepare_sensor_comparison_display(sensor_comparison)
-        comparison_display = comparison_display.rename(columns={
-            "sensor": "Sensor",
-            "antes_pct_conectado": "Antes: % Conectado",
-            "depois_pct_conectado": "Depois: % Conectado",
-            "antes_min_sem_dado_dia": "Antes: Min s/ dado/dia",
-            "depois_min_sem_dado_dia": "Depois: Min s/ dado/dia",
-            "antes_desconexoes_dia": "Antes: Desconexões/dia",
-            "depois_desconexoes_dia": "Depois: Desconexões/dia",
-            "antes_tempo_desconectado_dia": "Antes: Tempo desc./dia",
-            "depois_tempo_desconectado_dia": "Depois: Tempo desc./dia",
-            "antes_maior_evento_min": "Antes: Maior evento (min)",
-            "depois_maior_evento_min": "Depois: Maior evento (min)",
-            "antes_pct_sem_dado_critico": "Antes: % s/ dado crítico",
-            "depois_pct_sem_dado_critico": "Depois: % s/ dado crítico",
-            "delta_pct_conectado_pp": "Δ % Conectado (p.p.)",
-            "delta_min_sem_dado_dia": "Δ Min s/ dado/dia",
-            "delta_desconexoes_dia": "Δ Desconexões/dia",
-            "delta_pct_sem_dado_critico_pp": "Δ % s/ dado crítico (p.p.)",
-            "reducao_min_sem_dado_dia": "Redução min s/ dado/dia",
-        })
-        st.dataframe(
-            comparison_display,
-            use_container_width=True,
-            hide_index=True,
-        )
+        # Tabela comparison_display removida a pedido do usuário
 
     with tab_sensor:
         st.caption(
@@ -1229,6 +1225,7 @@ def render_dashboard() -> None:
                         legend_title="",
                         height=350,
                         template=PLOTLY_TEMPLATE,
+                        hovermode="x unified",
                         hoverlabel=dict(bgcolor="white", font_size=13, font_family="Arial"),
                     )
                     st.plotly_chart(fig_s, use_container_width=True)
@@ -1410,8 +1407,11 @@ def render_dashboard() -> None:
                     title="Quantidade de eventos por sensor",
                     template=PLOTLY_TEMPLATE,
                     color_discrete_map={"Antes": "#5470c6", "Depois": "#ee6666"},
+                    text="eventos",
                 )
                 fig_sensor_ev.update_traces(
+                    textposition="outside",
+                    textfont=dict(size=11),
                     hovertemplate="<b>%{fullData.name}</b><br>Sensor: %{x}<br>Eventos: %{y}<extra></extra>"
                 )
                 fig_sensor_ev.update_layout(
@@ -1428,22 +1428,28 @@ def render_dashboard() -> None:
                     .agg(tempo_total=("duracao_min", "sum"))
                     .sort_values(["sensor", "cenario"])
                 )
+                sensor_dur["tempo_total_horas"] = sensor_dur["tempo_total"] / 60
+                sensor_dur["duracao_fmt"] = sensor_dur["tempo_total"].apply(fmt_duration)
                 fig_sensor_dur = px.bar(
                     sensor_dur,
                     x="sensor",
-                    y="tempo_total",
+                    y="tempo_total_horas",
                     color="cenario",
                     barmode="group",
-                    title="Tempo total offline por sensor (min)",
+                    title="Tempo total offline por sensor",
                     template=PLOTLY_TEMPLATE,
                     color_discrete_map={"Antes": "#5470c6", "Depois": "#ee6666"},
+                    text="duracao_fmt",
+                    custom_data=["duracao_fmt"],
                 )
                 fig_sensor_dur.update_traces(
-                    hovertemplate="<b>%{fullData.name}</b><br>Sensor: %{x}<br>Tempo offline: %{y:.0f} min<extra></extra>"
+                    textposition="outside",
+                    textfont=dict(size=11),
+                    hovertemplate="<b>%{fullData.name}</b><br>Sensor: %{x}<br>Tempo offline: %{customdata[0]}<extra></extra>"
                 )
                 fig_sensor_dur.update_layout(
                     xaxis_title="Sensor",
-                    yaxis_title="Tempo total (min)",
+                    yaxis_title="Horas (escala temporal)",
                     legend_title="",
                     hoverlabel=dict(bgcolor="white", font_size=13, font_family="Arial"),
                 )
@@ -1531,7 +1537,7 @@ def render_dashboard() -> None:
                 "inicio_desconexao": "Início",
                 "fim_desconexao": "Fim",
                 "duracao_fmt": "Duração",
-                "periodo_critico": "Horário Crítico?",
+                "periodo_critico": "Horário Crítico? (entre 20h e 8h)",
             })
             st.dataframe(events_view, use_container_width=True, hide_index=True)
 
