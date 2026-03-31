@@ -1,0 +1,5 @@
+﻿variavel,dia,total_minutos_esperados,minutos_com_dado,minutos_sem_dado,percentual_conectado,percentual_desconectado,quantidade_desconexoes_gt_20min,menor_desconexao_min,maior_desconexao_min,media_desconexao_min,tempo_total_desconectado_min,desconexoes_no_periodo_critico_20h_08h
+ambiente_loja,26/03/2026,1440,1421,19,98.68,1.32,0,0,0,0,0,0
+ambiente_loja,27/03/2026,1440,1440,0,100.0,0.0,0,0,0,0,0,0
+ambiente_loja,28/03/2026,1440,1440,0,100.0,0.0,0,0,0,0,0,0
+ambiente_loja,29/03/2026,1440,1440,0,100.0,0.0,0,0,0,0,0,0

@@ -1,0 +1,6 @@
+﻿variavel,inicio_periodo,fim_periodo,total_minutos_esperados,minutos_com_dado,minutos_sem_dado,percentual_conectado,percentual_desconectado,quantidade_desconexoes_gt_20min,menor_desconexao_min,maior_desconexao_min,media_desconexao_min,tempo_total_desconectado_min,desconexoes_no_periodo_critico_20h_08h
+balcao_resfriado_1_calibrado,17/08/2025 00:00,26/08/2025 23:59,14400,4029,10371,27.98,72.02,34,21.0,1146.0,183.88,6252.0,17
+balcao_resfriado_2,17/08/2025 00:00,26/08/2025 23:59,14400,6624,7776,46.0,54.0,55,21.0,289.0,43.93,2416.0,37
+balcao_congelado_calibrado,17/08/2025 00:00,26/08/2025 23:59,14400,5643,8757,39.19,60.81,56,21.0,1243.0,100.09,5605.0,12
+balcao_congelado,17/08/2025 00:00,26/08/2025 23:59,14400,7349,7051,51.03,48.97,53,21.0,1183.0,93.68,4965.0,17
+ambiente_loja,17/08/2025 00:00,26/08/2025 23:59,14400,14380,20,99.86,0.14,0,0.0,0.0,0.0,0.0,0
