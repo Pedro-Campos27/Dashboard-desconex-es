@@ -1357,6 +1357,37 @@ def _load_syos_benchmark(excel_file: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def _load_syos_benchmark_source(source) -> pd.DataFrame:
+    """Aceita Path ou arquivo enviado pelo Streamlit para o benchmark SyOS."""
+    if source is None:
+        return pd.DataFrame()
+
+    if isinstance(source, Path):
+        return _load_syos_benchmark(source)
+
+    source_name = str(getattr(source, "name", "")).lower()
+    try:
+        if source_name.endswith(".csv"):
+            df = pd.read_csv(source)
+        else:
+            df = pd.read_excel(source)
+
+        required = ["Data", "Apelido do balcão", "Temperatura"]
+        if not all(col in df.columns for col in required):
+            return pd.DataFrame()
+        mask = (
+            df["Apelido do balcão"].astype(str).str.contains("Balcão", case=False, na=False)
+            & ~df["Apelido do balcão"].astype(str).str.contains("Câmara", case=False, na=False)
+        )
+        df = df.loc[mask, required].copy()
+        df.columns = ["datahora", "sensor", "valor"]
+        df["datahora"] = pd.to_datetime(df["datahora"], dayfirst=True, errors="coerce")
+        df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+        return df.dropna(subset=["datahora"]).sort_values(["sensor", "datahora"]).reset_index(drop=True)
+    except Exception:
+        return pd.DataFrame()
+
+
 def _normalize_to_5min_grid(df: pd.DataFrame, period_start, period_end) -> pd.DataFrame:
     """Reamostra a série para 5 minutos e completa lacunas com NaN."""
     return build_time_grid_from_raw(df, period_start, period_end, freq=BENCHMARK_GRID_FREQ)
@@ -2415,17 +2446,47 @@ def render_dashboard() -> None:
                 st.caption("Nenhum evento para exibir.")
 
     with tab_benchmark:
+        repo_syos_antes = _load_syos_benchmark_source(COMPETITOR_DIR / COMPETITOR_BEFORE_FILE)
+        repo_syos_depois = _load_syos_benchmark_source(COMPETITOR_DIR / COMPETITOR_AFTER_FILE)
+        syos_antes_upload = None
+        syos_depois_upload = None
+
         st.subheader("Desconexões Sagil x SyOS")
         st.caption(
             "Comparação de desconexões entre sensores Sagil e SyOS nos mesmos períodos. "
             "A Sagil é alinhada em 5 minutos apenas nesta aba para comparação justa com a SyOS."
         )
 
+        if repo_syos_antes.empty or repo_syos_depois.empty:
+            st.info(
+                "Os arquivos da SyOS não estão disponíveis no servidor do Streamlit Cloud. "
+                "Você pode enviar os Excels originais abaixo para habilitar esta aba nesta sessão."
+            )
+            upload_col1, upload_col2 = st.columns(2)
+            with upload_col1:
+                syos_antes_upload = st.file_uploader(
+                    "SyOS ANTES (.xlsx/.xls)",
+                    type=["xlsx", "xls"],
+                    key="syos_antes_upload",
+                    help="Arquivo original da SyOS para o período ANTES.",
+                )
+            with upload_col2:
+                syos_depois_upload = st.file_uploader(
+                    "SyOS DEPOIS (.xlsx/.xls)",
+                    type=["xlsx", "xls"],
+                    key="syos_depois_upload",
+                    help="Arquivo original da SyOS para o período DEPOIS.",
+                )
+
         # ── Carrega dados brutos ──
         sagil_antes_raw = _load_sagil_benchmark("antes")
         sagil_depois_raw = _load_sagil_benchmark("depois")
-        syos_antes_raw = _load_syos_benchmark(COMPETITOR_DIR / COMPETITOR_BEFORE_FILE)
-        syos_depois_raw = _load_syos_benchmark(COMPETITOR_DIR / COMPETITOR_AFTER_FILE)
+        syos_antes_raw = (
+            repo_syos_antes if not repo_syos_antes.empty else _load_syos_benchmark_source(syos_antes_upload)
+        )
+        syos_depois_raw = (
+            repo_syos_depois if not repo_syos_depois.empty else _load_syos_benchmark_source(syos_depois_upload)
+        )
 
         data_ok = all(
             not d.empty for d in [sagil_antes_raw, sagil_depois_raw, syos_antes_raw, syos_depois_raw]
@@ -2442,6 +2503,10 @@ def render_dashboard() -> None:
             if syos_depois_raw.empty:
                 missing.append("SyOS DEPOIS")
             st.warning(f"Dados faltando: {', '.join(missing)}")
+            if "SyOS ANTES" in missing or "SyOS DEPOIS" in missing:
+                st.caption(
+                    "Para o deploy, envie os dois arquivos SyOS acima ou versione-os na pasta `syos/` do repositório."
+                )
         else:
             # ── KPI card para benchmark ──
             def _bm_kpi_card(
