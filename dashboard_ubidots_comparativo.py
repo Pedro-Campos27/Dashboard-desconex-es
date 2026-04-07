@@ -12,18 +12,34 @@ import math
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-AFTER_DIR = Path(r"C:\Users\sagil\Downloads\sagil_\depois\2026-03-26_a_2026-04-05")
-BEFORE_ROOT = Path(r"C:\Users\sagil\Downloads\sagil_\antes")
+LOCAL_SAGIL_DIR = Path(r"C:\Users\sagil\Downloads\sagil_")
+LOCAL_AFTER_DIR = LOCAL_SAGIL_DIR / "depois" / "2026-03-26_a_2026-04-05"
+LOCAL_BEFORE_ROOT = LOCAL_SAGIL_DIR / "antes"
 
 # Caminhos para dados do concorrente (Excel)
-COMPETITOR_DIR = Path(r"C:\Users\sagil\Downloads\syos")
+LOCAL_COMPETITOR_DIR = Path(r"C:\Users\sagil\Downloads\syos")
 COMPETITOR_BEFORE_FILE = "ANTES_SyOS-20-08-25_até_31-08-25-.xlsx"
 COMPETITOR_AFTER_FILE = "DEPOIS_SyOS-26-03-26_até_05-04-26-.xlsx"
 
 # Caminhos para dados NOSSO (Excel - exportados da Ubidots)
-NOSSO_DIR = Path(r"C:\Users\sagil\Downloads\sagil_")
+REPO_AFTER_DIR = SCRIPT_DIR / "saida_ubidots_analise"
+REPO_BEFORE_ROOT = SCRIPT_DIR / "antes"
+REPO_COMPETITOR_DIR = SCRIPT_DIR / "syos"
 #NOSSO_BEFORE_FILE = "ANTES.xlsx"
 #NOSSO_AFTER_FILE = "DEPOIS.xlsx"
+
+
+def first_existing_path(*candidates: Path) -> Path:
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
+
+
+AFTER_DIR = first_existing_path(LOCAL_AFTER_DIR, REPO_AFTER_DIR)
+BEFORE_ROOT = first_existing_path(LOCAL_BEFORE_ROOT, REPO_BEFORE_ROOT)
+COMPETITOR_DIR = first_existing_path(LOCAL_COMPETITOR_DIR, REPO_COMPETITOR_DIR)
+NOSSO_DIR = first_existing_path(LOCAL_SAGIL_DIR, SCRIPT_DIR)
 
 PLOTLY_TEMPLATE = "plotly_white"
 CRITICAL_HOURS = {20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7}
@@ -662,16 +678,9 @@ def load_nosso_by_period(period_type: str) -> pd.DataFrame:
     Returns:
         DataFrame com colunas: datahora, sensor, valor, periodo
     """
-    period_dir = NOSSO_DIR / period_type
-    if not period_dir.exists():
+    date_folder = resolve_sagil_period_dir(period_type)
+    if date_folder is None or not date_folder.exists():
         return pd.DataFrame()
-
-    # Encontra a pasta de data (usa a primeira/única pasta disponível)
-    date_folders = [p for p in period_dir.iterdir() if p.is_dir()]
-    if not date_folders:
-        return pd.DataFrame()
-
-    date_folder = date_folders[0]  # Pega a primeira pasta com data
 
     # Define o rótulo do período
     periodo_label = "NOSSO - Antes" if period_type == "antes" else "NOSSO - Depois"
@@ -737,6 +746,26 @@ def list_before_periods(root: Path) -> list[Path]:
             if path.is_dir() and (path / "resumo_geral.csv").exists()
         ]
     )
+
+
+def resolve_sagil_period_dir(period_type: str) -> Path | None:
+    standard_root = NOSSO_DIR / period_type
+    if standard_root.exists():
+        date_folders = sorted(path for path in standard_root.iterdir() if path.is_dir())
+        if date_folders:
+            return date_folders[0]
+        if (standard_root / "resumo_geral.csv").exists():
+            return standard_root
+
+    if period_type == "antes":
+        before_periods = list_before_periods(REPO_BEFORE_ROOT)
+        if before_periods:
+            return before_periods[0]
+
+    if period_type == "depois" and REPO_AFTER_DIR.exists():
+        return REPO_AFTER_DIR
+
+    return None
 
 
 def _load_dataset(base_dir_str: str, scenario: str) -> dict[str, object]:
@@ -1282,13 +1311,9 @@ BENCHMARK_PERIODS = {
 
 def _load_sagil_benchmark(period_type: str) -> pd.DataFrame:
     """Carrega dados brutos da Sagil para benchmark."""
-    period_dir = NOSSO_DIR / period_type
-    if not period_dir.exists():
+    date_folder = resolve_sagil_period_dir(period_type)
+    if date_folder is None or not date_folder.exists():
         return pd.DataFrame()
-    date_folders = [p for p in period_dir.iterdir() if p.is_dir()]
-    if not date_folders:
-        return pd.DataFrame()
-    date_folder = date_folders[0]
     all_data = []
     for sensor_folder in date_folder.iterdir():
         if not sensor_folder.is_dir():
