@@ -753,14 +753,14 @@ def resolve_sagil_period_dir(period_type: str) -> Path | None:
     if standard_root.exists():
         date_folders = sorted(path for path in standard_root.iterdir() if path.is_dir())
         if date_folders:
-            return date_folders[0]
+            return date_folders[-1]
         if (standard_root / "resumo_geral.csv").exists():
             return standard_root
 
     if period_type == "antes":
         before_periods = list_before_periods(REPO_BEFORE_ROOT)
         if before_periods:
-            return before_periods[0]
+            return before_periods[-1]
 
     if period_type == "depois" and REPO_AFTER_DIR.exists():
         return REPO_AFTER_DIR

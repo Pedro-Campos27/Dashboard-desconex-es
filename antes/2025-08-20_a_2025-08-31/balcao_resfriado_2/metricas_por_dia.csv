@@ -1,0 +1,13 @@
+﻿variavel,dia,total_minutos_esperados,minutos_com_dado,minutos_sem_dado,percentual_conectado,percentual_desconectado,quantidade_desconexoes_gt_20min,menor_desconexao_min,maior_desconexao_min,media_desconexao_min,tempo_total_desconectado_min,desconexoes_no_periodo_critico_20h_08h
+balcao_resfriado_2,20/08/2025,288,240,48,83.33,16.67,0,0.0,0.0,0.0,0.0,0
+balcao_resfriado_2,21/08/2025,288,259,29,89.93,10.07,1,6.0,6.0,6.0,6.0,0
+balcao_resfriado_2,22/08/2025,288,233,55,80.9,19.1,2,5.0,7.0,6.0,12.0,2
+balcao_resfriado_2,23/08/2025,288,225,63,78.12,21.88,1,7.0,7.0,7.0,7.0,1
+balcao_resfriado_2,24/08/2025,288,282,6,97.92,2.08,0,0.0,0.0,0.0,0.0,0
+balcao_resfriado_2,25/08/2025,288,178,110,61.81,38.19,6,7.0,21.0,12.33,74.0,2
+balcao_resfriado_2,26/08/2025,288,166,122,57.64,42.36,11,5.0,27.0,10.45,115.0,11
+balcao_resfriado_2,27/08/2025,288,187,101,64.93,35.07,7,5.0,18.0,10.71,75.0,7
+balcao_resfriado_2,28/08/2025,288,286,2,99.31,0.69,0,0.0,0.0,0.0,0.0,0
+balcao_resfriado_2,29/08/2025,288,288,0,100.0,0.0,0,0.0,0.0,0.0,0.0,0
+balcao_resfriado_2,30/08/2025,288,288,0,100.0,0.0,0,0.0,0.0,0.0,0.0,0
+balcao_resfriado_2,31/08/2025,288,288,0,100.0,0.0,0,0.0,0.0,0.0,0.0,0
