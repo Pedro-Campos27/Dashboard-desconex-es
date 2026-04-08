@@ -845,11 +845,44 @@ def _load_dataset(base_dir_str: str, scenario: str) -> dict[str, object]:
     }
 
 
-load_dataset = (
-    st.cache_data(show_spinner=False)(_load_dataset)
-    if st.runtime.exists()
-    else _load_dataset
-)
+def build_dataset_cache_token(base_dir_str: str) -> tuple[tuple[str, int, int], ...]:
+    """Assinatura do diretório para invalidar cache quando os arquivos mudarem."""
+    base_dir = Path(base_dir_str)
+    if not base_dir.exists():
+        return tuple()
+
+    file_tokens: list[tuple[str, int, int]] = []
+    for file_path in sorted(path for path in base_dir.rglob("*") if path.is_file()):
+        stat = file_path.stat()
+        file_tokens.append(
+            (
+                str(file_path.relative_to(base_dir)).replace("\\", "/"),
+                int(stat.st_mtime_ns),
+                int(stat.st_size),
+            )
+        )
+    return tuple(file_tokens)
+
+
+def _load_dataset_cached(
+    base_dir_str: str,
+    scenario: str,
+    cache_token: tuple[tuple[str, int, int], ...],
+) -> dict[str, object]:
+    return _load_dataset(base_dir_str, scenario)
+
+
+if st.runtime.exists():
+    _load_dataset_cached = st.cache_data(show_spinner=False)(_load_dataset_cached)
+
+    def load_dataset(base_dir_str: str, scenario: str) -> dict[str, object]:
+        cache_token = build_dataset_cache_token(base_dir_str)
+        return _load_dataset_cached(base_dir_str, scenario, cache_token)
+
+else:
+
+    def load_dataset(base_dir_str: str, scenario: str) -> dict[str, object]:
+        return _load_dataset(base_dir_str, scenario)
 
 
 def filter_date_range(
