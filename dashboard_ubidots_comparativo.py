@@ -1648,12 +1648,6 @@ def render_dashboard() -> None:
     before_labels = list(before_options.keys())
 
     st.title("Comparação de desconexões antes e depois da troca do gateway")
-    st.caption(
-        "Os períodos são diferentes. Por isso, os gráficos principais usam hora do dia "
-        "e métricas normalizadas por dia amostrado. Visão geral, Por sensor e Eventos "
-        "são recalculados a partir dos dados brutos em grade de 1 minuto; a aba SyOS vs Sagil "
-        "usa alinhamento em 5 minutos apenas para a comparação justa com a SyOS."
-    )
 
     with st.sidebar:
         st.header("Comparação")
@@ -1810,15 +1804,11 @@ def render_dashboard() -> None:
     before_info, after_info = st.columns(2)
     before_info.markdown(
         f"**Antes**  \n"
-        f"Janela: {before_filtered['period_label']}  \n"
-        f"Dias amostrados: {fmt_int(before_filtered['sample_days'])}  \n"
-        
+        f"Janela: {before_filtered['period_label']}"
     )
     after_info.markdown(
         f"**Depois**  \n"
-        f"Janela: {after_filtered['period_label']}  \n"
-        f"Dias amostrados: {fmt_int(after_filtered['sample_days'])}  \n"
-        
+        f"Janela: {after_filtered['period_label']}"
     )
 
     if before_metrics["desconexoes_por_dia"] > 0 and after_metrics["desconexoes_por_dia"] == 0:
@@ -2226,8 +2216,7 @@ def render_dashboard() -> None:
             st.info("Não houve eventos de desconexão acima de 20 minutos nos filtros atuais.")
         else:
             st.caption(
-                "Cada evento é um período contínuo sem dados do sensor, reconstruído em grade de 1 minuto "
-                "a partir dos dados brutos, com duração acima de 20 minutos."
+                "Cada evento representa uma perda de conexão (sem dados acima de 20 minutos)."
             )
 
             before_events = events_long.loc[events_long["cenario"] == "Antes"]
